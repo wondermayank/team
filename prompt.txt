@@ -1,0 +1,131 @@
+THUNDER OFFICE - .GLB ASSET PROMPTS (team.wondermayank.in)
+=========================================================
+Use with any text-to-3D / image-to-3D tool (Meshy, Tripo, Rodin/Hyper3D, Luma Genie, Spline AI) or a Blender workflow.
+The website already works without any .glb (it draws simple placeholder furniture). Every file you add REPLACES the placeholder props of that room.
+
+1) STYLE PROMPT (paste at the start of EVERY prompt)
+----------------------------------------------------
+"Soft clay 3D render style, chunky rounded shapes, smooth matte plasticine material, no sharp edges, low-poly friendly (under 15k triangles),
+pastel palette: soft purple #7C3AED #A78BFA #C4B5FD, blue #60A5FA #B9D9DC, white and off-white base, subtle warm wood accents.
+Clean minimal design, game-ready, single object, no text, no logos, no people, no background, centred on the floor."
+
+2) ASSET CONTRACT (very important)
+----------------------------------
+- Format: .glb (glTF 2.0 binary), embedded textures, Y-up, 1 unit = 1 metre.
+- Size: each file under 5 MB (Cloudflare Pages limit is 25 MB per file; keep phones in mind: total models under ~25 MB).
+- Compress: gltf-transform optimize in.glb out.glb --compress meshopt --texture-compress webp   (the site loads Meshopt-compressed files).
+- One file PER ROOM, named exactly:  models/decor_<roomId>.glb
+- Origin of the file = CENTRE of the room, ON the floor (y = 0).
+- Room axes: -Z is the BACK wall (where the big picture hangs), +Z is the DOOR side, -X is the LEFT wall (member portraits / photos hang there), +X is the right wall.
+- Keep the walls, floor, ceiling, doors and pictures OUT of the file; only furniture and small decor. Do not put big objects within 1.2 m of the door (+Z) and keep the centre aisle free so the visitor can walk in.
+- Furniture height must stay below 1.1 m on the back-wall side (the picture hangs at y 1.1 to 2.8 m and the plaque at y 0.4-0.8 m, centred).
+- There is no collision with props in the prototype, so keep props pushed to the sides.
+- Register the files in models/manifest.json:
+    { "decor": ["living","tech","designer","creativity","singing","dancing","ca","wondermayank","anamika", "..."], "hub": true }
+  and the hub file models/hub_decor.glb (origin = centre of the hub, floor level).
+
+3) ROOM SIZES (inner width x depth, metres)
+-------------------------------------------
+Personal rooms (13) and side rooms (singing, creativity, tech, designer): 4.4 x 5.0
+Living room 7.2 x 6.4  |  Dancing room 6.4 x 5.6  |  CA room 5.6 x 5.2  |  Wondermayank's room 5.2 x 5.2  |  Hub 6 x 6
+(Tip: generate each prop separately and combine them in Blender or at https://gltf.report / Three.js editor, then export one decor file per room.)
+
+4) PROPS PER ROOM (generate each as its own prompt = STYLE PROMPT + line below)
+-------------------------------------------------------------------------------
+LIVING ROOM (decor_living.glb)
+ - "large L-shaped blue clay sofa with pastel cushions, 3 m wide"        (place at z -0.9, facing the door)
+ - "round low wooden coffee table with pizza box, uno cards and red cups"
+ - "two round purple and pink bean bags"
+ - "fluffy teddy bear sitting, with a small blue bow tie"
+ - "wide TV stand with a flat TV showing a lightning logo"  (against the LEFT or RIGHT wall, not the back wall)
+ - "tall green potted plant in a white pot"  (x2)
+ - "star-pattern round rug, 2.6 m wide, very flat"
+ - "floor lamp with a warm round shade"
+
+TECH ROOM (decor_tech.glb)
+ - "long white desk with three monitors and a keyboard, clay style"  (x2, along the right wall)
+ - "teal gaming chair, chunky rounded"  (x3)
+ - "tall server rack with glowing green and blue light strips"
+ - "small bean bag, blue" and "potted plant, small"
+ - "wall shelf with books, a mug and a rubber duck" (small, optional)
+
+DESIGNER ROOM (decor_designer.glb)
+ - "drawing tablet desk with a large pen display and stylus"  (x2)
+ - "pink swivel chair, rounded"  (x3)
+ - "tall easel with a blank canvas"
+ - "colour swatch stand with paint pots"
+ - "stack of poster tubes in a basket"
+
+CREATIVITY ROOM (decor_creativity.glb)
+ - "ring light on a tripod with a phone holder"
+ - "camera on a tripod"
+ - "large work table covered with colourful cubes and sticky notes"
+ - "movie clapperboard standing on a stool"
+ - "rolling whiteboard on stand, blank"
+ - "soft purple cube seats" (x5)
+
+SINGING ROOM (decor_singing.glb)
+ - "small round stage platform, pastel pink, 3 m wide"
+ - "two microphone stands with microphones"
+ - "two tall speakers, white with purple rings"
+ - "music stand with sheet paper"
+ - "acoustic guitar leaning on a stand"
+ - "soft sound-proof wall panels, hexagon shapes" (flat, for the side walls)
+
+DANCING ROOM (decor_dancing.glb)
+ - "floating-style bluetooth speaker pair on stands"
+ - "disco ball hanging from a short rope, pastel"
+ - "ballet barre along a wall"
+ - "yoga mats rolled in a basket"
+ - "round floor light discs, glowing blue and purple"  (flat, near the back)
+ - Keep the centre EMPTY (dance floor).
+
+CA ROOM (decor_ca.glb)
+ - "executive desk with laptop, calculator and papers, clay style"
+ - "two guest chairs facing the desk"
+ - "tall file cabinet and a bookshelf with ledgers"
+ - "small meeting table with a notepad and pen cup"
+ - "water dispenser, pastel" and "potted plant"
+
+WONDERMAYANK'S ROOM (decor_wondermayank.glb)
+ - "founder desk with two monitors, a lightning-bolt lamp and a notebook"
+ - "purple desk chair"
+ - "bookshelf with trophies and a small rocket model"
+ - "cosy reading armchair with a blanket"
+ - "whiteboard with sticky notes"
+
+PERSONAL ROOMS (13) - generate once as a base set, then add ONE signature prop per person
+ Base set (decor_<name>.glb): "single bed with pastel blanket and pillows", "study desk with a lamp and books", "desk chair", "bedside table with a small plant", "round fluffy rug"
+ Signature props:
+  anamika : jewellery box and a mini mirror
+  aahan   : keyboard with a code monitor and a stack of ACCA books
+  pragya  : anatomy model skull on a stand and a stack of medical books
+  aashi   : mini blackboard with chalk and a teacher's pointer
+  sara    : photo-editing monitor with a camera and ring light
+  rohit   : study desk with textbooks and a coffee mug
+  shruti  : sketchbook stand with colour pencils
+  sora    : fashion mannequin torso and a sketch tablet
+  mahi    : small microphone with a pop filter and a water bottle
+  nani    : speaker and small dance shoes on a shelf
+  rohan   : two monitors with Python snake logo sticker and a keyboard
+  raj     : dumbbells, a yoga mat and a football (sports gear) in a corner
+
+HUB (hub_decor.glb, 6 x 6 m)
+ - "large round welcome rug, purple and blue" (flat)
+ - "four small pastel benches" at the corners, "tall plants" (x4)
+ - "floating lightning-bolt sculpture, glowing purple" in the centre (height 1.3 m, on a round white base)
+
+5) OPTIONAL: FIND READY-MADE MODELS (check each licence; use only CC0 or CC-BY and keep the credits)
+-----------------------------------------------------------------------------------------------
+ - Kenney.nl "Furniture Kit" (CC0, glb, low-poly, clean, fits the clay look best)
+ - Quaternius "Ultimate Furniture / Modular Interior" packs (CC0)
+ - Poly Pizza (polypizza.com), search: sofa, desk, bean bag, plant, microphone
+ - Sketchfab (filter: Downloadable + CC0/CC-BY, glTF)
+ - GitHub: search "three.js office glb", "low poly furniture glb CC0", "KhronosGroup/glTF-Sample-Assets" (for testing the pipeline only)
+ Recolour everything to the palette in section 1 (Blender: Principled BSDF, Roughness 0.9, Metallic 0).
+
+6) TESTING A FILE
+-----------------
+ 1. Put decor_tech.glb in /models, write { "decor": ["tech"] } in models/manifest.json.
+ 2. Run:  python3 -m http.server 8080   then open http://localhost:8080/
+ 3. Press "Enter the office", open the map (M), teleport to the Tech room.

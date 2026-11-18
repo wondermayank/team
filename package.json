@@ -1,0 +1,13 @@
+{
+  "name": "thunder-office-3d",
+  "version": "0.1.0",
+  "private": true,
+  "description": "3D walkthrough of the ThunderStudy team office",
+  "scripts": {
+    "build": "esbuild src/main.js --bundle --minify --format=iife --outfile=app.js",
+    "watch": "esbuild src/main.js --bundle --format=iife --outfile=app.js --watch",
+    "serve": "python3 -m http.server 8080"
+  },
+  "dependencies": { "three": "^0.187.0" },
+  "devDependencies": { "esbuild": "^0.28.0" }
+}

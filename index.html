@@ -1,0 +1,190 @@
+<!DOCTYPE html>
+<html lang="en-IN" data-theme="light">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no">
+<title>Thunder Office | ThunderStudy Team</title>
+<meta name="description" content="Walk through the ThunderStudy team office in 3D: meet all 13 members, see their rooms and the shared rooms.">
+<meta name="theme-color" id="metaTheme" content="#70A1FC">
+<meta name="color-scheme" content="light dark">
+<link rel="icon" href="/favicon.svg" type="image/svg+xml">
+<script>
+/* theme: same saved key as the main site ('light' = blue, 'dark' = purple) */
+(function(){var t='light';try{var s=localStorage.getItem('theme');if(s==='dark'||s==='light')t=s;}catch(e){}document.documentElement.setAttribute('data-theme',t);})();
+</script>
+<style>
+:root{--canvas:#E8EEFB;--surface:#F4F7FF;--ink:#1B2340;--body:#4A5578;--primary:#3F6FE0;--primary-soft:#DCE7FF;--on-primary:#fff;--clay-dark:rgba(120,140,190,.38);--clay-light:rgba(255,255,255,.95);--scrim:rgba(27,35,64,.45)}
+[data-theme="dark"]{--canvas:#161230;--surface:#262049;--ink:#F1ECFF;--body:#BDB4E6;--primary:#9A7AFB;--primary-soft:#3A2F6E;--on-primary:#1A1730;--clay-dark:rgba(0,0,0,.55);--clay-light:rgba(255,255,255,.05);--scrim:rgba(8,6,24,.6)}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{margin:0;height:100%;overflow:hidden;background:var(--canvas);color:var(--body);font-family:Inter,system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;overscroll-behavior:none}
+#gl{position:fixed;inset:0;width:100%;height:100%;display:block;touch-action:none;outline:none}
+svg{width:22px;height:22px;fill:none;stroke:currentColor;stroke-width:1.9;stroke-linecap:round;stroke-linejoin:round;flex:none}
+button{font:inherit;color:inherit;cursor:pointer}
+.clay{background:var(--surface);box-shadow:6px 6px 16px var(--clay-dark),-6px -6px 16px var(--clay-light)}
+[data-theme="dark"] .clay{box-shadow:0 10px 26px var(--clay-dark),inset 0 0 0 1px rgba(255,255,255,.06)}
+
+/* top bar */
+.top{position:fixed;top:max(12px,env(safe-area-inset-top));left:12px;right:12px;display:flex;align-items:flex-start;justify-content:space-between;gap:10px;pointer-events:none;z-index:20}
+.top>*{pointer-events:auto}
+.brand{display:flex;align-items:center;gap:10px;padding:8px 16px 8px 8px;border-radius:999px;text-decoration:none;color:var(--ink);font-weight:800;font-size:15px}
+.brand .bk{width:34px;height:34px;border-radius:50%;display:grid;place-items:center;background:var(--primary-soft);color:var(--primary)}
+.brand .bk svg{width:18px;height:18px}
+.brand small{display:block;font-size:11px;font-weight:600;color:var(--body);margin-top:1px}
+.tools{display:flex;gap:10px}
+.ib{width:46px;height:46px;border:0;border-radius:50%;display:grid;place-items:center;color:var(--primary)}
+.ib:active{transform:scale(.94)}
+[data-theme="dark"] .sun{display:none}[data-theme="light"] .moon{display:none}
+#where{position:fixed;top:max(14px,env(safe-area-inset-top));left:50%;transform:translateX(-50%);padding:10px 20px;border-radius:999px;font-weight:800;color:var(--ink);font-size:15px;z-index:15;pointer-events:none;white-space:nowrap}
+#where:empty{display:none}
+#where.pop{animation:pop .45s cubic-bezier(.2,.9,.3,1.3)}
+@keyframes pop{from{transform:translateX(-50%) scale(.85);opacity:.2}to{transform:translateX(-50%) scale(1);opacity:1}}
+#mini{position:fixed;left:12px;top:calc(max(12px,env(safe-area-inset-top)) + 62px);border-radius:22px;padding:0;cursor:pointer;z-index:12;background:var(--surface)}
+.crumbs{display:none}
+
+/* crosshair + prompt + hint */
+#cross{position:fixed;left:50%;top:50%;width:8px;height:8px;margin:-4px 0 0 -4px;border-radius:50%;background:#fff;box-shadow:0 0 0 2px rgba(27,35,64,.45);opacity:.85;pointer-events:none;z-index:10}
+.touch #cross{display:none}
+#prompt{position:fixed;left:50%;bottom:max(26px,env(safe-area-inset-bottom));transform:translate(-50%,20px);opacity:0;pointer-events:none;border:0;border-radius:999px;padding:13px 22px;font-weight:800;color:var(--on-primary);background:var(--primary);box-shadow:0 10px 26px rgba(63,111,224,.4);display:flex;align-items:center;gap:10px;z-index:15;transition:opacity .25s,transform .25s}
+[data-theme="dark"] #prompt{box-shadow:0 10px 26px rgba(0,0,0,.5)}
+#prompt.show{opacity:1;transform:translate(-50%,0);pointer-events:auto}
+#hint{position:fixed;left:50%;bottom:30px;transform:translateX(-50%);padding:10px 20px;border-radius:999px;font-size:14px;font-weight:700;color:var(--ink);opacity:0;pointer-events:none;transition:opacity .3s;z-index:11}
+#hint.show{opacity:1}
+
+/* joystick */
+#joyZone{display:none}
+#joyBase{position:fixed;width:120px;height:120px;border-radius:50%;background:rgba(255,255,255,.28);border:2px solid rgba(255,255,255,.7);display:none;place-items:center;pointer-events:none;z-index:12;backdrop-filter:blur(4px)}
+#joyBase.on{display:grid}
+#joyKnob{width:52px;height:52px;border-radius:50%;background:var(--primary);box-shadow:0 6px 16px rgba(0,0,0,.3)}
+#joyHelp{display:none;position:fixed;left:24px;bottom:max(28px,env(safe-area-inset-bottom));width:96px;height:96px;border-radius:50%;border:2px dashed rgba(255,255,255,.75);background:rgba(255,255,255,.18);z-index:9;pointer-events:none;color:#fff;place-items:center}
+.touch #joyHelp{display:grid}
+#joyHelp svg{width:30px;height:30px;color:#fff;filter:drop-shadow(0 1px 3px rgba(0,0,0,.4))}
+
+#fade{position:fixed;inset:0;background:var(--canvas);opacity:0;pointer-events:none;transition:opacity .23s;z-index:40}
+#fade.on{opacity:1}
+
+/* start overlay */
+#start{position:fixed;inset:0;z-index:60;display:grid;place-items:center;padding:20px;background:rgba(220,232,255,.72);backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px);transition:opacity .4s,visibility .4s}
+[data-theme="dark"] #start{background:rgba(20,17,43,.72)}
+#start.hide{opacity:0;visibility:hidden;pointer-events:none}
+.card{width:min(520px,100%);border-radius:32px;padding:30px 28px;max-height:92vh;overflow:auto}
+.logo{width:60px;height:60px;border-radius:20px;display:grid;place-items:center;background:var(--primary-soft);color:var(--primary);margin-bottom:14px}
+.logo svg{width:30px;height:30px}
+.card h1{margin:0 0 8px;font-size:28px;line-height:1.15;color:var(--ink)}
+.card p{margin:0 0 16px;line-height:1.6}
+.keys{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin:0 0 20px}
+.touch .keys.d,.keys.m{display:none}
+.touch .keys.m{display:grid}
+.keys div{padding:12px 14px;border-radius:18px;background:var(--canvas);font-size:13.5px;line-height:1.4}
+.keys b{display:block;color:var(--ink);font-size:14px;margin-bottom:2px}
+.go{width:100%;border:0;border-radius:999px;padding:16px 22px;font-weight:800;font-size:17px;color:var(--on-primary);background:var(--primary);display:flex;align-items:center;justify-content:center;gap:10px;box-shadow:0 12px 28px rgba(63,111,224,.4)}
+[data-theme="dark"] .go{box-shadow:0 12px 28px rgba(0,0,0,.5)}
+.note{margin:14px 2px 0;font-size:12.5px;line-height:1.5;text-align:center;opacity:.85}
+#loading{position:fixed;inset:0;z-index:70;display:grid;place-items:center;background:var(--canvas);transition:opacity .4s,visibility .4s}
+#loading.hide{opacity:0;visibility:hidden}
+.spin{width:44px;height:44px;border-radius:50%;border:5px solid var(--primary-soft);border-top-color:var(--primary);animation:sp 0.9s linear infinite}
+@keyframes sp{to{transform:rotate(360deg)}}
+
+/* popup */
+#popup{position:fixed;inset:0;z-index:50;display:grid;place-items:center;padding:16px;background:var(--scrim);backdrop-filter:blur(5px);-webkit-backdrop-filter:blur(5px);opacity:0;visibility:hidden;transition:opacity .35s,visibility .35s}
+#popup.show{opacity:1;visibility:visible}
+#popup .card{width:min(720px,100%);padding:14px 14px 26px;transform:translateY(24px) scale(.9);opacity:0;transition:transform .5s cubic-bezier(.2,.9,.25,1.05),opacity .35s}
+#popup.show .card{transform:none;opacity:1}
+#pImg{width:100%;aspect-ratio:16/9;object-fit:cover;border-radius:22px;display:block;background:var(--canvas)}
+.pbody{padding:16px 12px 0}
+#pTag{display:inline-block;padding:4px 12px;border-radius:999px;font-size:11px;font-weight:800;letter-spacing:1px;text-transform:uppercase;color:#fff;background:var(--tc,#5B8DF5)}
+#pTitle{margin:10px 0 6px;font-size:26px;color:var(--ink)}
+.lab{display:block;margin:14px 0 6px;font-size:11.5px;font-weight:800;letter-spacing:1.1px;text-transform:uppercase;color:var(--primary)}
+#pWhy{margin:0;line-height:1.7;font-size:15.5px}
+#pWho{display:flex;flex-wrap:wrap;gap:8px}
+.chip-who{display:inline-flex;align-items:center;gap:8px;padding:5px 14px 5px 5px;border-radius:999px;background:var(--primary-soft);color:var(--ink);font-weight:700;font-size:13.5px}
+.chip-who:not(:has(img)){padding-left:14px}
+.chip-who img{width:26px;height:26px;border-radius:50%;object-fit:cover}
+#pClose{position:absolute;top:24px;right:24px;width:42px;height:42px;border:0;border-radius:50%;display:grid;place-items:center;background:var(--surface);color:var(--primary);box-shadow:3px 3px 10px rgba(0,0,0,.2)}
+#pClose svg{width:18px;height:18px}
+#popup .card{position:relative}
+
+/* panel */
+#panel{position:fixed;top:0;right:0;bottom:0;width:min(380px,100%);z-index:45;transform:translateX(105%);transition:transform .45s cubic-bezier(.2,.9,.25,1);display:flex;flex-direction:column;border-radius:28px 0 0 28px;background:var(--surface)}
+#panel.show{transform:none}
+.ph{display:flex;align-items:center;justify-content:space-between;padding:20px 20px 8px;color:var(--ink);font-weight:800;font-size:20px}
+#panelList{overflow:auto;padding:0 18px 24px;flex:1}
+#panelList h3{margin:18px 4px 8px;font-size:11.5px;letter-spacing:1.1px;text-transform:uppercase;color:var(--primary)}
+.plist{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.pitem{display:flex;align-items:center;gap:10px;border:0;text-align:left;padding:7px 12px 7px 7px;border-radius:999px;background:var(--canvas);color:var(--ink);font-weight:700;font-size:13.5px}
+.pitem:hover{background:var(--primary-soft)}
+.pitem img,.pitem i{width:30px;height:30px;border-radius:50%;object-fit:cover;flex:none;display:block}
+.pitem span{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+@media(max-width:560px){.brand small{display:none}.card{padding:24px 20px}.card h1{font-size:24px}#where{top:calc(max(14px,env(safe-area-inset-top)) + 62px);font-size:13.5px;padding:8px 16px}#mini{top:calc(max(12px,env(safe-area-inset-top)) + 62px)}.touch #where{left:auto;right:12px;transform:none;top:calc(max(12px,env(safe-area-inset-top)) + 62px)}.touch #where.pop{animation:none}}
+@media(prefers-reduced-motion:reduce){*{transition-duration:.01s!important;animation-duration:.01s!important}}
+</style>
+</head>
+<body>
+<canvas id="gl" tabindex="0" aria-label="3D walkthrough of the Thunder Office"></canvas>
+<div id="cross"></div>
+
+<div class="top">
+  <a class="brand clay" href="/team.html" aria-label="Back to the team page">
+    <span class="bk"><svg viewBox="0 0 24 24"><path d="M15 6l-6 6 6 6"/></svg></span>
+    <span>Thunder Office<small>ThunderStudy team</small></span>
+  </a>
+  <div class="tools">
+    <button class="ib clay" id="mapBtn" aria-label="Rooms and map"><svg viewBox="0 0 24 24"><path d="M9 4 3 6v14l6-2 6 2 6-2V4l-6 2z"/><path d="M9 4v14M15 6v14"/></svg></button>
+    <button class="ib clay" id="themeBtn" aria-label="Switch light and dark theme">
+      <svg class="sun" viewBox="0 0 24 24"><circle cx="12" cy="12" r="4.2"/><path d="M12 2.5v2.4M12 19.1v2.4M4.2 4.2l1.7 1.7M18.1 18.1l1.7 1.7M2.5 12h2.4M19.1 12h2.4M4.2 19.8l1.7-1.7M18.1 5.9l1.7-1.7"/></svg>
+      <svg class="moon" viewBox="0 0 24 24"><path d="M20 14.5A8.5 8.5 0 1 1 9.5 4a7 7 0 0 0 10.5 10.5Z"/></svg>
+    </button>
+    <button class="ib clay" id="helpBtn" aria-label="Help and controls"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M9.5 9.5a2.5 2.5 0 1 1 3.5 2.3c-.7.3-1 .9-1 1.7M12 17h.01"/></svg></button>
+  </div>
+</div>
+
+<div id="where" class="clay" aria-live="polite"></div>
+<canvas id="mini" class="clay" aria-label="Mini map. Tap to open the room list"></canvas>
+<div id="hint" class="clay">Click the view to look around. Esc to free the mouse.</div>
+
+<button id="prompt" type="button"><svg viewBox="0 0 24 24"><path d="M2 12s3.6-7 10-7 10 7 10 7-3.6 7-10 7S2 12 2 12z"/><circle cx="12" cy="12" r="3"/></svg><span id="promptTxt"></span></button>
+
+<div id="joyZone"></div>
+<div id="joyBase"><div id="joyKnob"></div></div>
+<div id="joyHelp"><svg viewBox="0 0 24 24"><path d="M12 3v18M3 12h18M12 3l-3 3M12 3l3 3M12 21l-3-3M12 21l3-3M3 12l3-3M3 12l3 3M21 12l-3-3M21 12l-3 3"/></svg></div>
+<div id="fade"></div>
+
+<div id="popup" aria-hidden="true" role="dialog" aria-modal="true" aria-labelledby="pTitle">
+  <div class="card clay">
+    <button id="pClose" type="button" aria-label="Close"><svg viewBox="0 0 24 24"><path d="M6 6l12 12M18 6 6 18"/></svg></button>
+    <img id="pImg" alt="">
+    <div class="pbody">
+      <span id="pTag"></span>
+      <h2 id="pTitle"></h2>
+      <span class="lab">Why this room</span><p id="pWhy"></p>
+      <span class="lab">Who uses it</span><div id="pWho"></div>
+    </div>
+  </div>
+</div>
+
+<aside id="panel" class="clay" aria-label="Rooms">
+  <div class="ph"><span>Go to a room</span><button class="ib clay" id="panelClose" type="button" aria-label="Close" style="width:40px;height:40px"><svg viewBox="0 0 24 24"><path d="M6 6l12 12M18 6 6 18"/></svg></button></div>
+  <div id="panelList"></div>
+</aside>
+
+<div id="start">
+  <div class="card clay">
+    <div class="logo"><svg viewBox="0 0 24 24" style="fill:currentColor"><path d="M13 2 4 14h7l-1 8 9-12h-7z"/></svg></div>
+    <h1>Walk through Thunder Office</h1>
+    <p>You start in the living room. Walk down the corridors to meet all 13 of us in our rooms, and tap any picture to see why the room exists.</p>
+    <div class="keys d">
+      <div><b>Move</b>W A S D or arrow keys</div><div><b>Run</b>Hold Shift</div>
+      <div><b>Look</b>Mouse (click the view first)</div><div><b>See details</b>E or click a picture</div>
+    </div>
+    <div class="keys m">
+      <div><b>Move</b>Drag with your left thumb</div><div><b>Look</b>Drag with your right thumb</div>
+      <div><b>See details</b>Tap a picture</div><div><b>Jump</b>Use the map button</div>
+    </div>
+    <button class="go" id="startBtn" type="button">Enter the office<svg viewBox="0 0 24 24"><path d="M5 12h14M13 6l6 6-6 6"/></svg></button>
+    <p class="note">Rooms and portraits are illustrations to protect everyone's privacy.</p>
+  </div>
+</div>
+<div id="loading"><div class="spin"></div></div>
+<noscript><p style="position:fixed;inset:0;z-index:99;display:grid;place-items:center;background:#fff;color:#111;margin:0;padding:20px;text-align:center">Please turn on JavaScript to walk through the office, or visit the <a href="/team.html">team page</a>.</p></noscript>
+<script src="app.js"></script>
+</body>
+</html>
