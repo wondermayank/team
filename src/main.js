@@ -9,8 +9,11 @@ const H = 3.2;          // wall height
 const T = 0.3;          // wall thickness
 const HALF = 1.5;       // half corridor width
 const DOOR_W = 1.4, DOOR_H = 2.35;
-const PITCH = 4.7;      // room slot length along a corridor
-const SIDE_D = 5;       // depth of side rooms
+const PITCH = 4.7;      // default room slot length along a corridor
+const SIDE_D = 5;       // default depth of side rooms
+const DECK_Y = 3.45;    // terrace floor height
+const LOW_Y = -3.45;    // exit lobby floor height
+let buildLevel = 0;     // level new colliders belong to (0 ground, 1 terrace, -1 exit lobby)
 const ZSTART = 1.5;     // first room starts this far into a corridor
 const HUB = 3;          // half size of the hub
 const R = 0.32;         // player radius
@@ -78,11 +81,12 @@ const rbCache = {};
 const cmat = (c) => cmatCache[c] || (cmatCache[c] = std(c));
 const rbGeo = (w, h, d, r) => { const k = [w, h, d, r].join('|'); return rbCache[k] || (rbCache[k] = new RoundedBoxGeometry(w, h, d, 3, r)); };
 
-function addWall(cx, cz, w, d, y0, h, mat, collide = true) {
+function addCollider(cx, cz, w, d, lv) { colliders.push({ x0: cx - w / 2, x1: cx + w / 2, z0: cz - d / 2, z1: cz + d / 2, lv: lv || [buildLevel] }); }
+function addWall(cx, cz, w, d, y0, h, mat, collide = true, lv) {
   const m = new THREE.Mesh(unitBox, mat);
   m.scale.set(w, h, d); m.position.set(cx, y0 + h / 2, cz);
   world.add(m);
-  if (collide) colliders.push({ x0: cx - w / 2, x1: cx + w / 2, z0: cz - d / 2, z1: cz + d / 2 });
+  if (collide) addCollider(cx, cz, w, d, lv);
   return m;
 }
 function addFlat(cx, cz, w, d, y, mat, up) {
@@ -216,7 +220,7 @@ function buildRoom(id, cx, cz, dv, sx, sz) {
   const fmat = std(0xffffff, 0.95); tintFloors.push({ mat: fmat, tint: tc });
   const fl = new THREE.Mesh(unitPlane, fmat); fl.rotation.x = -Math.PI / 2; fl.scale.set(sx, sz, 1); fl.position.y = 0.002; g.add(fl);
   const ce = new THREE.Mesh(unitPlane, mats.ceil); ce.rotation.x = Math.PI / 2; ce.scale.set(sx, sz, 1); ce.position.y = H; g.add(ce);
-  const lamp = new THREE.Mesh(unitBox, mats.lamp); lamp.scale.set(sx * 0.3, 0.04, sz * 0.25); lamp.position.set(0, H - 0.03, 0); g.add(lamp);
+  const lamp = new THREE.Mesh(unitBox, mats.lamp); lamp.scale.set(Math.min(sx * 0.3, 1.6), 0.04, Math.min(sz * 0.25, 1.2)); lamp.position.set(0, H - 0.03, 0); g.add(lamp);
   // baseboard strip in tint colour
   const bb = (w, d, x, z) => { const m = new THREE.Mesh(unitBox, cmat(tc)); m.scale.set(w, 0.12, d); m.position.set(x, 0.06, z); g.add(m); };
   bb(sx, 0.05, 0, -sz / 2 + 0.03); bb(0.05, sz, -sx / 2 + 0.03, 0); bb(0.05, sz, sx / 2 - 0.03, 0);
@@ -227,13 +231,30 @@ function buildRoom(id, cx, cz, dv, sx, sz) {
   const portrait = (mid, size, x, y, z, rotY) => addPicture(g, { w: size, h: size, src: 'assets/' + MEMBERS[mid].file + '.webp', tint: room.tint, roomId: id, pos: new THREE.Vector3(x, y, z), rotY });
   const illus = (w, x, y, z, rotY) => addPicture(g, { w, h: w * 9 / 16, src: S('room-' + id), tint: room.tint, roomId: id, pos: new THREE.Vector3(x, y, z), rotY });
   const leftWall = -sx / 2 + 0.04;
+  const nameplate2 = (gr, x, y, w, title, sub, c, z) => { const p = labelPlane(title, sub, w, 0.42, { ac: c }); p.position.set(x, y, z); gr.add(p); };
 
   if (room.kind === 'personal') {
-    portrait(room.member, 1.7, 0, 1.85, back, 0);
-    nameplate(0.6, 1.9, room.title, room.sub + '  /  Personal room');
-    illus(2.5, leftWall, 1.7, -0.2, Math.PI / 2);
-    const hint = labelPlane('Tap to see why this room', null, 1.7, 0.3, { ac: tc }); hint.position.set(leftWall + 0.01, 0.7, -0.2); hint.rotation.y = Math.PI / 2; g.add(hint);
-    propsPersonal(props, sx, sz, tc);
+    // bedroom at the door side, big bathroom behind a partition wall with a doorway
+    const zp = -sz / 2 + 2.9 + 0.1;            // partition position (bathroom depth 2.9 m)
+    const dx0 = 2.15, dw = 1.1;                // doorway centre / width
+    const lc = (lx, lz, w, d) => { // local collider
+      const th = Math.atan2(dv[0], dv[1]), c = Math.cos(th), s2 = Math.sin(th);
+      const wx = cx + lx * c + lz * s2, wz = cz - lx * s2 + lz * c;
+      const sw = Math.abs(s2) > 0.5;
+      addCollider(wx, wz, sw ? d : w, sw ? w : d, [0]);
+    };
+    const pw = (a, b) => { // partition piece from x=a to x=b
+      const w = b - a; const m = new THREE.Mesh(unitBox, mats.wall); m.scale.set(w, H, 0.2); m.position.set((a + b) / 2, H / 2, zp); g.add(m); lc((a + b) / 2, zp, w, 0.2);
+    };
+    pw(-sx / 2, dx0 - dw / 2); pw(dx0 + dw / 2, sx / 2);
+    const lin = new THREE.Mesh(unitBox, mats.wall); lin.scale.set(dw, H - DOOR_H, 0.2); lin.position.set(dx0, DOOR_H + (H - DOOR_H) / 2, zp); g.add(lin);
+    const pb = zp + 0.14; // partition front face (bedroom side)
+    portrait(room.member, 1.7, -0.7, 1.85, pb, 0);
+    nameplate2(g, -0.7, 0.6, 1.9, room.title, room.sub + '  /  Personal room', tc, pb + 0.01);
+    illus(2.5, leftWall, 1.95, 1.2, Math.PI / 2);
+    // bathroom label on the doorway side
+    const bl = labelPlane('Bathroom', null, 1.0, 0.26, { ac: tc }); bl.position.set(dx0, 2.6, pb + 0.01); g.add(bl);
+    propsPersonal(props, sx, sz, tc, { zp, dx0, dw, boy: BOYS.has(id) });
   } else if (id === 'living') {
     illus(3.8, 0, 1.95, back, 0);
     nameplate(0.5, 2.4, room.title, 'Where we meet, eat and play');
@@ -262,17 +283,60 @@ function buildRoom(id, cx, cz, dv, sx, sz) {
 }
 
 /* ---- placeholder props (replace with your own .glb, see prompt.txt) ---- */
+const BOYS = new Set(['wondermayank', 'aahan', 'rohit', 'raj', 'rohan']);
 const C = { white: 0xffffff, soft: 0xdfe8ff, lav: 0xd9d0ff, wood: 0xcfd8f5, deep: 0x5a4fb0, blue: 0x6f9bf7, dark: 0x2a2f55 };
-function propsPersonal(g, sx, sz, tc) {
-  const rx = sx / 2;
-  const rug = cyl(g, 1.3, 0.03, 0, 0.0, 0.5, tc); rug.material = cmat(new THREE.Color(tc).lerp(new THREE.Color(0xffffff), 0.55).getHex());
-  rb(g, 0.8, 0.06, 1.6, rx - 0.5, 0.72, -0.6, C.white);
-  rb(g, 0.06, 0.72, 1.4, rx - 0.5, 0, -0.6, C.soft);
-  rb(g, 0.45, 0.08, 0.45, rx - 1.35, 0.45, -0.6, tc); rb(g, 0.45, 0.45, 0.08, rx - 1.55, 0.45, -0.6, tc, Math.PI / 2);
-  rb(g, 0.4, 0.28, 0.02, rx - 0.45, 0.78, -0.6, C.dark, Math.PI / 2);
-  sph(g, 0.45, rx - 0.95, 0, 1.2, tc, 0.65);
-  cyl(g, 0.2, 0.35, rx - 0.35, 0, -sz / 2 + 0.45, C.white); sph(g, 0.33, rx - 0.35, 0.3, -sz / 2 + 0.45, 0x6fcfb0);
-  blob(g, rx - 0.6, -0.6, 1.4, 2.0); blob(g, rx - 0.95, 1.2, 1.3, 1.1);
+function propsPersonal(g, sx, sz, tc, o) {
+  const L = -sx / 2, Rt = sx / 2, front = sz / 2, back = -sz / 2, zp = o.zp;
+  const accent = o.boy ? 0x6f9bf7 : 0xe8a0c8, light = new THREE.Color(tc).lerp(new THREE.Color(0xffffff), 0.6).getHex();
+  // ---------- bedroom ----------
+  cyl(g, 1.9, 0.03, -0.2, 0, 1.6, light);                                           // rug
+  rb(g, 2.1, 0.38, 1.6, L + 1.2, 0, 1.0, C.white, 0, 0.1);                           // bed base (head against left wall)
+  rb(g, 2.0, 0.18, 1.5, L + 1.25, 0.38, 1.0, tc, 0, 0.08);                           // mattress / blanket
+  rb(g, 0.1, 0.9, 1.7, L + 0.12, 0, 1.0, C.soft, 0, 0.04);                          // headboard
+  rb(g, 0.5, 0.14, 0.6, L + 0.55, 0.55, 0.45, C.white, 0, 0.06); rb(g, 0.5, 0.14, 0.6, L + 0.55, 0.55, 1.55, C.white, 0, 0.06); // pillows
+  rb(g, 0.5, 0.5, 0.5, L + 0.4, 0, 2.1, C.soft, 0, 0.05); cyl(g, 0.12, 0.3, L + 0.4, 0.5, 2.1, tc); // bedside table + lamp
+  rb(g, 0.5, 0.5, 0.5, L + 0.4, 0, -0.1, C.soft, 0, 0.05);
+  // study table on the right wall, with chair, laptop, books
+  rb(g, 0.8, 0.06, 2.0, Rt - 0.5, 0.74, 0.4, C.white); rb(g, 0.06, 0.74, 1.8, Rt - 0.15, 0, 0.4, C.soft); rb(g, 0.06, 0.74, 1.8, Rt - 0.85, 0, 0.4, C.soft);
+  rb(g, 0.04, 0.4, 0.55, Rt - 0.3, 0.8, 0.3, C.dark, 0, 0.01); rb(g, 0.45, 0.02, 0.35, Rt - 0.62, 0.8, 0.3, C.dark, 0, 0.01);
+  rb(g, 0.3, 0.2, 0.25, Rt - 0.4, 0.8, 1.1, tc, 0, 0.02); rb(g, 0.3, 0.12, 0.25, Rt - 0.4, 1.0, 1.1, 0xf0a63a, 0, 0.02);
+  rb(g, 0.5, 0.08, 0.5, Rt - 1.45, 0.45, 0.4, tc, 0, 0.05); rb(g, 0.08, 0.55, 0.5, Rt - 1.68, 0.45, 0.4, tc, 0, 0.04); cyl(g, 0.04, 0.45, Rt - 1.45, 0, 0.4, C.dark);
+  rb(g, 0.4, 1.9, 1.5, Rt - 0.3, 0, 2.55, C.soft, 0, 0.04);                          // bookshelf
+  [0.35, 0.8, 1.25, 1.7].forEach((y, i) => rb(g, 0.34, 0.07, 1.4, Rt - 0.3, y, 2.55, i % 2 ? tc : C.white, 0, 0.01));
+  // beanbag + plant near the entrance
+  sph(g, 0.5, Rt - 1.2, 0, 3.4, tc, 0.65); cyl(g, 0.22, 0.4, L + 0.4, 0, front - 0.5, C.white); sph(g, 0.36, L + 0.4, 0.34, front - 0.5, 0x6fcfb0);
+  blob(g, L + 1.2, 1.0, 2.6, 2.1); blob(g, Rt - 0.6, 0.4, 1.5, 2.3); blob(g, Rt - 1.2, 3.4, 1.4, 1.4);
+  // ---------- bathroom (z from zp to back wall); doorway at x ~ +2.15 stays clear ----------
+  const B = back + 0.1, mid = (zp + back) / 2;
+  const tile = new THREE.Mesh(unitPlane, cmat(light)); tile.rotation.x = -Math.PI / 2; tile.scale.set(sx - 0.1, zp - back - 0.2, 1); tile.position.set(0, 0.012, mid); g.add(tile);
+  // bathtub (big, freestanding) on the back wall
+  rb(g, 2.0, 0.62, 1.0, -0.1, 0, B + 0.55, C.white, 0, 0.28);
+  const water = new THREE.Mesh(unitPlane, new THREE.MeshStandardMaterial({ color: 0x9fd3ff, roughness: 0.15 })); water.rotation.x = -Math.PI / 2; water.scale.set(1.7, 0.7, 1); water.position.set(-0.1, 0.58, B + 0.55); g.add(water);
+  cyl(g, 0.03, 0.5, 0.75, 0, B + 0.1, 0xbfc7e8); rb(g, 0.04, 0.04, 0.25, 0.75, 0.5, B + 0.22, 0xbfc7e8);
+  // shower stall with glass, next to the tub
+  rb(g, 1.0, 0.05, 1.0, 1.55, 0, B + 0.5, light, 0, 0.02);
+  const glass = new THREE.Mesh(unitBox, new THREE.MeshStandardMaterial({ color: 0xcfe8ff, transparent: true, opacity: 0.35, roughness: 0.1 })); glass.scale.set(1.0, 2.0, 0.04); glass.position.set(1.55, 1.0, B + 1.0); g.add(glass);
+  cyl(g, 0.03, 1.9, 1.55, 0, B + 0.08, 0xbfc7e8); sph(g, 0.1, 1.55, 1.85, B + 0.14, 0xbfc7e8);
+  // changing room: curtained booth in the back-left corner
+  const bx = -2.0;
+  rb(g, 1.4, 0.04, 1.4, bx, 0, B + 0.7, 0xffffff, 0, 0.01);
+  rb(g, 0.04, 2.2, 1.4, bx - 0.7, 0, B + 0.7, accent, 0, 0.02); rb(g, 0.04, 2.2, 1.4, bx + 0.7, 0, B + 0.7, accent, 0, 0.02);
+  const curt = new THREE.Mesh(unitBox, cmat(tc)); curt.scale.set(0.8, 2.0, 0.05); curt.position.set(bx - 0.3, 1.0, B + 1.4); g.add(curt);
+  const cm = new THREE.Mesh(unitBox, new THREE.MeshStandardMaterial({ color: 0xe9f4ff, roughness: 0.05, metalness: 0.5 })); cm.scale.set(0.6, 1.5, 0.03); cm.position.set(bx, 1.2, back + 0.05); g.add(cm);
+  rb(g, 0.45, 0.45, 0.45, bx + 0.2, 0, B + 0.5, tc, 0, 0.06);
+  // dress storage on the left wall
+  rb(g, 0.6, 2.2, 1.4, L + 0.35, 0, -2.1, o.boy ? 0x5a86ee : accent, 0, 0.04);
+  [-0.35, 0.35].forEach((k) => rb(g, 0.04, 2.0, 0.64, L + 0.67, 0.1, -2.1 + k, C.white, 0, 0.01));
+  [-0.1, 0.1].forEach((k) => rb(g, 0.05, 0.4, 0.04, L + 0.7, 1.0, -2.1 + k, 0xf0a63a, 0, 0.01));
+  // vanity + big mirror on the right wall
+  rb(g, 0.55, 0.85, 1.5, Rt - 0.35, 0, -2.75, C.white, 0, 0.05); rb(g, 0.6, 0.05, 1.55, Rt - 0.35, 0.85, -2.75, accent, 0, 0.02);
+  const mir = new THREE.Mesh(unitBox, new THREE.MeshStandardMaterial({ color: 0xe9f4ff, roughness: 0.05, metalness: 0.5 })); mir.scale.set(0.04, 1.1, 1.3); mir.position.set(Rt - 0.04, 1.7, -2.75); g.add(mir);
+  rb(g, 0.2, 0.2, 0.3, Rt - 0.3, 0.9, -2.4, tc, 0, 0.03);
+  // toilet by the partition, laundry basket, mats, plant
+  cyl(g, 0.22, 0.4, -0.9, 0, -1.9, C.white); rb(g, 0.4, 0.5, 0.2, -0.9, 0.4, -1.65, C.white, 0, 0.04);
+  rb(g, 0.45, 0.4, 0.5, 0.5, 0, -1.8, tc, 0, 0.08);
+  cyl(g, 0.55, 0.02, -0.1, 0, B + 1.55, accent); sph(g, 0.3, L + 0.5, 0.34, B + 0.2, 0x6fcfb0);
+  blob(g, -0.1, B + 0.55, 2.4, 1.4); blob(g, -2.0, B + 0.7, 1.6, 1.6);
 }
 function propsLiving(g, sx, sz, tc) {
   const rug = cyl(g, 2.6, 0.03, 0, 0, 0.1, 0xd9d0ff);
@@ -380,8 +444,8 @@ function buildCorridor(c) {
   const hd = HEAD[c.heading];
   const F = makeFrame(c.heading, hd.f[0] * HUB, hd.f[1] * HUB);
   const n = Math.max(c.left.length, c.right.length);
-  const zs = c.start ?? ZSTART;
-  const L = Math.max(c.minLength || 0, zs + n * PITCH + 1.5);
+  const zs = c.start ?? ZSTART, P = c.pitch ?? PITCH, SD = c.sideD ?? SIDE_D;
+  const L = Math.max(c.minLength || 0, zs + n * P + 1.5);
   F.flat(0, L / 2, HALF * 2, L, 0, mats.floor, true);
   F.flat(0, L / 2, HALF * 2, L, H, mats.ceil, false);
   for (let z = 2.2; z < L - 0.5; z += 4.2) F.wall(0, z, 0.5, 1.6, H - 0.05, 0.05, mats.lamp, false);
@@ -393,27 +457,41 @@ function buildCorridor(c) {
   [{ s: -1, list: c.left }, { s: 1, list: c.right }].forEach(({ s, list }) => {
     const lx = s * (HALF + T / 2);
     const piece = (a, b) => { if (b - a > 0.001) F.wall(lx, (a + b) / 2, T, b - a, 0, H, mats.wall, true); };
+    const gaps = list.map((id, i) => ({ zc: zs + i * P + P / 2, id }));
+    (c.extra || []).filter((e) => e.side === s).forEach((e) => gaps.push({ zc: e.zc, extra: e }));
+    gaps.sort((p, q) => p.zc - q.zc);
     let cur = T;
-    list.forEach((id, i) => {
-      const zc = zs + i * PITCH + PITCH / 2, a = zc - DOOR_W / 2, b = zc + DOOR_W / 2;
+    gaps.forEach((gp) => {
+      const zc = gp.zc, a = zc - DOOR_W / 2, b = zc + DOOR_W / 2;
       piece(cur, a); cur = b;
       F.wall(lx, zc, T, DOOR_W, DOOR_H, H - DOOR_H, mats.wall, false);
       F.flat(lx, zc, T + 0.02, DOOR_W, 0.001, mats.floor, true);
       const nrm = [-s * hd.r[0], -s * hd.r[1]]; // from wall towards corridor centre
-      const p = doorPos(lx, zc, nrm); const room = ROOMS[id];
-      addDoor({ ...p, tint: room.tint, title: room.title, sub: room.sub, roomId: id });
+      const p = doorPos(lx, zc, nrm);
+      if (gp.id) { const room = ROOMS[gp.id]; addDoor({ ...p, tint: room.tint, title: room.title, sub: room.sub, roomId: gp.id }); }
+      else addDoor({ ...p, tint: gp.extra.tint, title: gp.extra.title, sub: gp.extra.sub, roomId: null });
     });
     piece(cur, L);
     if (list.length) {
-      for (let i = 0; i <= list.length; i++) F.wall(s * (HALF + T + SIDE_D / 2), zs + i * PITCH, SIDE_D, T, 0, H, mats.wall, true);
-      F.wall(s * (HALF + T + SIDE_D + T / 2), zs + (list.length * PITCH) / 2, T, list.length * PITCH + T, 0, H, mats.wall, true);
+      for (let i = 0; i <= list.length; i++) F.wall(s * (HALF + T + SD / 2), zs + i * P, SD, T, 0, H, mats.wall, true);
+      F.wall(s * (HALF + T + SD + T / 2), zs + (list.length * P) / 2, T, list.length * P + T, 0, H, mats.wall, true);
       list.forEach((id, i) => {
-        const zc = zs + i * PITCH + PITCH / 2;
-        const [wx, wz] = F.p(s * (HALF + T + SIDE_D / 2), zc);
+        const zc = zs + i * P + P / 2;
+        const [wx, wz] = F.p(s * (HALF + T + SD / 2), zc);
         const dv = [-s * hd.r[0], -s * hd.r[1]];
-        buildRoom(id, wx, wz, dv, PITCH - T, SIDE_D);
+        buildRoom(id, wx, wz, dv, P - T, SD);
       });
     }
+  });
+  // cross doors inside the corridor (a second door before the end room)
+  (c.cross || []).forEach((cz0) => {
+    const w = HALF - DOOR_W / 2;
+    F.wall(-(DOOR_W / 2 + w / 2), cz0, w, T, 0, H, mats.wall, true);
+    F.wall((DOOR_W / 2 + w / 2), cz0, w, T, 0, H, mats.wall, true);
+    F.wall(0, cz0, DOOR_W, T, DOOR_H, H - DOOR_H, mats.wall, false);
+    F.flat(0, cz0, DOOR_W, T + 0.02, 0.001, mats.floor, true);
+    const [wx, wz] = F.p(0, cz0);
+    addDoor({ wx, wz, normal: [-hd.f[0], -hd.f[1]], tint: 'g', title: 'Client entrance', sub: 'CA wing', roomId: null });
   });
   // end wall + end room
   const [ew, ed] = c.endSize;
@@ -440,9 +518,112 @@ function buildCorridor(c) {
   corridorRecs.push({ id: c.id, L });
 }
 
+
+/* ============================== stairs, terrace, exit ================== */
+const ramps = []; // { x0,x1,z0,z1, a,b (z start/end), yA,yB, lo,hi }
+function buildAnnexes() {
+  const wallM = mats.wall, STEPS = 15;
+  const stepMats = [cmat(0xe4ebff), cmat(0xc9d8fb)];
+  const glassM = new THREE.MeshStandardMaterial({ color: 0xcfe8ff, transparent: true, opacity: 0.38, roughness: 0.1 });
+  const bar = (cx, cz, w, d, y) => { const m = new THREE.Mesh(unitBox, cmat(0x8fb1f5)); m.scale.set(w, 0.07, d); m.position.set(cx, y, cz); world.add(m); };
+  const sign = (title, sub, cx, y, cz, rotY, ac) => { const m = labelPlane(title, sub, 2.4, 0.56, { ac: ac || '#5B8DF5' }); m.position.set(cx, y, cz); m.rotation.y = rotY; world.add(m); };
+
+  /* ---- stairs UP (north-east pocket) to the terrace ---- */
+  buildLevel = 0;
+  addFlat(5.425, -4.5, 3.35, 5.4, 0.003, mats.floor, true);
+  addWall(3.6, -4.5, 0.3, 5.4, 0, H, wallM, true, [0, 1]);
+  addWall(7.25, -4.5, 0.3, 5.4, 0, H, wallM, true, [0, 1]);
+  for (let i = 0; i < STEPS; i++) {
+    const z0 = -2.6 - i * 0.3, top = (i + 1) * (DECK_Y / STEPS);
+    addWall(5.425, z0 - 0.15, 3.35, 0.3, 0, top, stepMats[i % 2], false);
+  }
+  ramps.push({ x0: 3.75, x1: 7.1, a: -2.6, b: -7.1, yA: 0, yB: DECK_Y, lo: 0, hi: 1 });
+  sign('Terrace and pool', 'Up the stairs', 3.74, 2.7, -3.4, Math.PI / 2, '#60A5FA');
+  spaces.push({ x0: 3.75, x1: 7.1, z0: -7.1, z1: -1.8, name: 'Stairs to the terrace', kind: 'area', id: 'stairsup', level: 'any' });
+
+  /* terrace deck (level 1) */
+  buildLevel = 1;
+  const dx0 = 3.6, dx1 = 14, dz0 = -24, dz1 = -7.1;
+  const deckM = cmat(0xe9eefc);
+  addWall((dx0 + dx1) / 2, (dz0 + dz1) / 2, dx1 - dx0, dz1 - dz0, DECK_Y - 0.3, 0.3, deckM, false);
+  for (let x = dx0 + 1.2; x < dx1; x += 1.2) { const m = new THREE.Mesh(unitBox, cmat(0xd5def7)); m.scale.set(0.03, 0.004, dz1 - dz0); m.position.set(x, DECK_Y + 0.002, (dz0 + dz1) / 2); world.add(m); }
+  const rail = (cx, cz, w, d) => { addWall(cx, cz, w, d, DECK_Y, 1.0, glassM, true); bar(cx, cz, w + 0.04, d + 0.04, DECK_Y + 1.0); };
+  rail(3.7, (dz0 + dz1) / 2 - 0.05, 0.1, dz1 - dz0 - 0.1);
+  rail(dx1 - 0.05, (dz0 + dz1) / 2, 0.1, dz1 - dz0);
+  rail((dx0 + dx1) / 2, dz0 + 0.05, dx1 - dx0, 0.1);
+  rail((7.1 + dx1) / 2, dz1 + 0.05, dx1 - 7.1, 0.1);
+  // privacy wall behind the pool with a sign
+  addWall(9, dz0 + 0.45, 8, 0.3, DECK_Y, 2.4, wallM, true);
+  const pw = labelPlane('Terrace and swimming pool', 'Relax, swim, repeat', 4.2, 1.0, { ac: '#7C3AED' }); pw.position.set(9, DECK_Y + 1.5, dz0 + 0.62); world.add(pw);
+  // pool
+  const px = 9, pz = -15.2, pwid = 6, pdep = 3.4;
+  const rim = new THREE.Mesh(rbGeo(pwid, 0.45, pdep, 0.2), cmat(0xffffff)); rim.position.set(px, DECK_Y + 0.225, pz); world.add(rim);
+  const water = new THREE.Mesh(unitPlane, new THREE.MeshStandardMaterial({ color: 0x60a5fa, roughness: 0.08, emissive: 0x2a6fd0, emissiveIntensity: 0.35 }));
+  water.rotation.x = -Math.PI / 2; water.scale.set(pwid - 0.5, pdep - 0.5, 1); water.position.set(px, DECK_Y + 0.46, pz); world.add(water);
+  for (let i = 0; i < 4; i++) { const st = new THREE.Mesh(unitPlane, new THREE.MeshBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0.28 })); st.rotation.x = -Math.PI / 2; st.scale.set(pwid - 1.2, 0.08, 1); st.position.set(px, DECK_Y + 0.465, pz - 1.0 + i * 0.66); world.add(st); }
+  [-0.5, 0.5].forEach((k) => { const l = new THREE.Mesh(new THREE.CylinderGeometry(0.03, 0.03, 0.9, 10), cmat(0xbfc7e8)); l.position.set(px + pwid / 2 - 0.1, DECK_Y + 0.8, pz + k * 0.7); world.add(l); });
+  addCollider(px, pz, pwid + 0.2, pdep + 0.2, [1]);
+  // loungers, umbrellas, plants
+  [6.6, 8.0, 10.0, 11.4].forEach((x, i) => {
+    const gp = new THREE.Group(); gp.position.set(x, DECK_Y, -11.3); world.add(gp);
+    rb(gp, 0.75, 0.3, 1.8, 0, 0.1, 0, i % 2 ? 0xa78bfa : 0x60a5fa, 0, 0.1); rb(gp, 0.75, 0.7, 0.12, 0, 0.3, -0.85, i % 2 ? 0xa78bfa : 0x60a5fa, 0.3, 0.05);
+    cyl(gp, 0.04, 0.1, 0.3, 0, 0.8, 0xbfc7e8); cyl(gp, 0.04, 0.1, -0.3, 0, 0.8, 0xbfc7e8);
+  });
+  [7.3, 10.7].forEach((x, i) => {
+    cyl(world, 0.04, 2.3, x, DECK_Y, -10.2, 0xbfc7e8);
+    const u = new THREE.Mesh(new THREE.ConeGeometry(1.25, 0.5, 20), cmat(i ? 0xc4b5fd : 0xb9d9dc)); u.position.set(x, DECK_Y + 2.45, -10.2); world.add(u);
+  });
+  [[4.6, -22.8], [13.2, -22.8], [13.2, -8.4], [4.6, -9.4]].forEach(([x, z]) => { cyl(world, 0.3, 0.5, x, DECK_Y, z, 0xffffff); sph(world, 0.5, x, DECK_Y + 0.45, z, 0x6fcfb0); });
+  spaces.push({ x0: dx0, x1: dx1, z0: dz0, z1: dz1, name: 'Terrace and pool', kind: 'area', id: 'terrace', level: 1, noMap: true });
+
+  /* ---- stairs DOWN (south-west pocket) to the exit ---- */
+  buildLevel = 0;
+  const H2 = H - LOW_Y;
+  addFlat(-5.425, 2.2, 3.35, 0.8, 0.003, mats.floor, true);
+  addFlat(-5.425, 4.5, 3.35, 5.4, H, mats.ceil, false);
+  addWall(-7.25, 4.5, 0.3, 5.4, LOW_Y, H2, wallM, true, [0, -1]);
+  addWall(-3.6, 4.5, 0.3, 5.4, LOW_Y, H2, wallM, true, [0, -1]);
+  for (let i = 0; i < STEPS - 1; i++) {
+    const z0 = 2.6 + i * 0.3, top = -(i + 1) * (-LOW_Y / STEPS);
+    addWall(-5.425, z0 + 0.15, 3.35, 0.3, LOW_Y, top - LOW_Y, stepMats[i % 2], false);
+  }
+  ramps.push({ x0: -7.1, x1: -3.75, a: 2.6, b: 7.1, yA: 0, yB: LOW_Y, lo: 0, hi: -1 });
+  sign('Exit', 'Stairs down', -3.74, 2.7, 3.4, -Math.PI / 2, '#F0A63A');
+  spaces.push({ x0: -7.1, x1: -3.75, z0: 1.8, z1: 7.2, name: 'Stairs to the exit', kind: 'area', id: 'stairsdown', level: 'any' });
+
+  /* exit lobby (level -1, underneath the shared rooms) */
+  buildLevel = -1;
+  const lx0 = -8.5, lx1 = -2.2, lz0 = 7.2, lz1 = 12;
+  addFlat((lx0 + lx1) / 2, (lz0 + lz1) / 2, lx1 - lx0, lz1 - lz0, LOW_Y + 0.003, mats.floor, true);
+  addFlat((lx0 + lx1) / 2, (lz0 + lz1) / 2, lx1 - lx0, lz1 - lz0, -0.15, mats.ceil, false);
+  const lh = LOW_Y * -1 - 0.15;
+  const lamp = new THREE.Mesh(unitBox, mats.lamp); lamp.scale.set(2.4, 0.05, 1.6); lamp.position.set(-5.35, -0.18, 9.6); world.add(lamp);
+  addWall(lx0 - 0.15, (lz0 + lz1) / 2, 0.3, lz1 - lz0 + 0.3, LOW_Y, lh, wallM, true);
+  addWall(lx1 + 0.15, (lz0 + lz1) / 2, 0.3, lz1 - lz0 + 0.3, LOW_Y, lh, wallM, true);
+  addWall((lx0 - 0.3 + -7.1) / 2, lz0, -7.1 - lx0 + 0.3, 0.3, LOW_Y, lh, wallM, true);
+  addWall((-3.75 + lx1 + 0.3) / 2, lz0, lx1 + 0.3 + 3.75, 0.3, LOW_Y, lh, wallM, true);
+  // exit door in the south wall
+  addWall((lx0 - 0.3 + -6.55) / 2, lz1, -6.55 - lx0 + 0.3, 0.3, LOW_Y, lh, wallM, true);
+  addWall((-4.15 + lx1 + 0.3) / 2, lz1, lx1 + 0.3 + 4.15, 0.3, LOW_Y, lh, wallM, true);
+  addWall(-5.35, lz1, 2.4, 0.3, LOW_Y + 2.45, lh - 2.45, wallM, false);
+  const out = new THREE.Mesh(unitPlane, new THREE.MeshBasicMaterial({ color: 0xf3f9ff })); out.scale.set(2.4, 2.45, 1); out.position.set(-5.35, LOW_Y + 1.225, lz1 + 0.5); world.add(out);
+  addCollider(-5.35, lz1 + 0.3, 2.4, 0.2, [-1]);
+  [-6.55, -4.15].forEach((x) => { const m = new THREE.Mesh(unitBox, cmat(0xf0a63a)); m.scale.set(0.1, 2.55, 0.34); m.position.set(x, LOW_Y + 1.275, lz1); world.add(m); });
+  const tp = new THREE.Mesh(unitBox, cmat(0xf0a63a)); tp.scale.set(2.6, 0.1, 0.34); tp.position.set(-5.35, LOW_Y + 2.5, lz1); world.add(tp);
+  const ex = labelPlane('Exit', 'Ground floor, main door', 2.4, 0.56, { ac: '#F0A63A' }); ex.position.set(-5.35, LOW_Y + 2.85, lz1 - 0.17); ex.rotation.y = Math.PI; world.add(ex);
+  // lobby furniture
+  rb(world, 2.2, 0.8, 0.7, -7.2, LOW_Y, 10.8, 0xffffff, 0, 0.08); rb(world, 2.2, 0.06, 0.8, -7.2, LOW_Y + 0.8, 10.8, 0xa78bfa, 0, 0.02);
+  rb(world, 1.6, 0.4, 0.5, -3.4, LOW_Y, 8.0, 0x60a5fa, 0, 0.1); rb(world, 1.6, 0.4, 0.5, -3.4, LOW_Y, 9.4, 0x60a5fa, 0, 0.1);
+  [[-8.0, 8.0], [-2.8, 11.3]].forEach(([x, z]) => { cyl(world, 0.3, 0.5, x, LOW_Y, z, 0xffffff); sph(world, 0.5, x, LOW_Y + 0.45, z, 0x6fcfb0); });
+  cyl(world, 1.0, 0.02, -5.35, LOW_Y + 0.003, 10.6, 0xc4b5fd);
+  spaces.push({ x0: lx0, x1: lx1, z0: lz0, z1: lz1, name: 'Exit lobby', kind: 'area', id: 'exit', level: -1, noMap: true });
+  buildLevel = 0;
+}
+
 /* ============================== build office =========================== */
 buildHub();
 LAYOUT.forEach(buildCorridor);
+buildAnnexes();
 finishPictures();
 applyTheme((() => { try { return localStorage.getItem('theme') === 'dark' ? 'dark' : 'light'; } catch (e) { return 'light'; } })());
 
@@ -461,18 +642,19 @@ applyTheme((() => { try { return localStorage.getItem('theme') === 'dark' ? 'dar
 })();
 
 /* ============================== player & input ========================= */
-const sp = roomInfo[SPAWN];
-const player = { x: sp.entry.x, z: sp.entry.z, yaw: 0, pitch: 0, bob: 0 };
+const player = { x: 0, z: 0.6, yaw: 0, pitch: 0, bob: 0, level: 0, gy: 0 };
 function faceDir(dx, dz) { return Math.atan2(-dx, -dz); }
-player.x = sp.entry.x; player.z = sp.entry.z; player.yaw = faceDir(sp.entry.face[0], sp.entry.face[1]);
+if (SPAWN === 'hub') { player.x = 0; player.z = 0.6; player.yaw = faceDir(0, -1); } else { const sp = roomInfo[SPAWN]; player.x = sp.entry.x; player.z = sp.entry.z; player.yaw = faceDir(sp.entry.face[0], sp.entry.face[1]); }
 const keys = {};
 const joy = { x: 0, y: 0, id: null };
 let started = false, locked = false, uiOpen = false;
-const bounds = (() => { let b = { x0: 1e9, x1: -1e9, z0: 1e9, z1: -1e9 }; spaces.forEach((s) => { b.x0 = Math.min(b.x0, s.x0); b.x1 = Math.max(b.x1, s.x1); b.z0 = Math.min(b.z0, s.z0); b.z1 = Math.max(b.z1, s.z1); }); return b; })();
+const bounds = (() => { let b = { x0: 1e9, x1: -1e9, z0: 1e9, z1: -1e9 }; spaces.filter((s) => !s.noMap).forEach((s) => { b.x0 = Math.min(b.x0, s.x0); b.x1 = Math.max(b.x1, s.x1); b.z0 = Math.min(b.z0, s.z0); b.z1 = Math.max(b.z1, s.z1); }); return b; })();
 
 function collide(nx, nz) {
+  const lvl = player.level;
   for (let it = 0; it < 2; it++) {
     for (const c of colliders) {
+      if (!c.lv.includes(lvl)) continue;
       if (nx < c.x0 - R || nx > c.x1 + R || nz < c.z0 - R || nz > c.z1 + R) continue;
       const cx = Math.max(c.x0, Math.min(nx, c.x1)), cz = Math.max(c.z0, Math.min(nz, c.z1));
       const dx = nx - cx, dz = nz - cz, d2 = dx * dx + dz * dz;
@@ -483,6 +665,18 @@ function collide(nx, nz) {
     }
   }
   return [nx, nz];
+}
+
+function groundY() {
+  for (const r of ramps) {
+    const zl = Math.min(r.a, r.b), zh = Math.max(r.a, r.b);
+    if (player.x >= r.x0 && player.x <= r.x1 && player.z >= zl && player.z <= zh && (player.level === r.lo || player.level === r.hi)) {
+      const t = Math.max(0, Math.min(1, (player.z - r.a) / (r.b - r.a)));
+      if (t >= 0.999) player.level = r.hi; else if (t <= 0.001) player.level = r.lo;
+      return r.yA + (r.yB - r.yA) * t;
+    }
+  }
+  return player.level === 1 ? DECK_Y : player.level === -1 ? LOW_Y : 0;
 }
 
 /* look + move ----------------------------------------------------------- */
@@ -517,7 +711,9 @@ canvas.addEventListener('pointerdown', (e) => {
   }
   try { canvas.setPointerCapture(e.pointerId); } catch (x) {}
 });
+const mouse = { x: 0, y: 0, in: false };
 canvas.addEventListener('pointermove', (e) => {
+  if (e.pointerType === 'mouse') { mouse.x = (e.clientX / innerWidth) * 2 - 1; mouse.y = -(e.clientY / innerHeight) * 2 + 1; mouse.in = true; }
   const p = ptrs.get(e.pointerId); if (!p) return;
   const dx = e.clientX - p.x, dy = e.clientY - p.y; p.x = e.clientX; p.y = e.clientY;
   if (p.joy) {
@@ -535,8 +731,7 @@ function endPtr(e) {
   if (p.joy) { joy.x = joy.y = 0; joy.id = null; joyBase.classList.remove('on'); return; }
   const moved = Math.hypot(e.clientX - p.sx, e.clientY - p.sy), dt = performance.now() - p.t;
   if (moved < 9 && dt < 450 && started && !uiOpen) {
-    if (!isTouch && !locked) { try { canvas.requestPointerLock(); } catch (x) {} }
-    if (locked) interact(); else interactAt(e.clientX, e.clientY);
+    interactAt(e.clientX, e.clientY);
   }
 }
 canvas.addEventListener('pointerup', endPtr); canvas.addEventListener('pointercancel', endPtr);
@@ -547,6 +742,7 @@ const v2 = new THREE.Vector2();
 function blocked(ax, az, bx, bz) {
   const dx = bx - ax, dz = bz - az;
   for (const c of colliders) {
+    if (!c.lv.includes(player.level)) continue;
     let t0 = 0, t1 = 1;
     for (const [p, d, lo, hi] of [[ax, dx, c.x0, c.x1], [az, dz, c.z0, c.z1]]) {
       if (Math.abs(d) < 1e-9) { if (p < lo || p > hi) { t0 = 2; break; } }
@@ -563,7 +759,8 @@ function pick(nx, ny) {
   const p = h[0].point;
   return blocked(camera.position.x, camera.position.z, p.x, p.z) ? null : h[0].object.userData.room;
 }
-function interact() { const id = pick(0, 0); if (id) openPopup(id); }
+function hoverPick() { return isTouch || !mouse.in ? pick(0, 0) : pick(mouse.x, mouse.y); }
+function interact() { const id = hoverPick(); if (id) openPopup(id); }
 function interactAt(cx, cy) { const id = pick((cx / innerWidth) * 2 - 1, -(cy / innerHeight) * 2 + 1); if (id) openPopup(id); }
 
 /* ============================== UI ===================================== */
@@ -615,26 +812,29 @@ $('helpBtn').addEventListener('click', () => { $('start').classList.remove('hide
     });
   };
   const rmItem = (id) => { const r = ROOMS[id]; return [r.kind === 'personal' ? r.title : r.title, id, r.tint, r.kind === 'personal' ? 'assets/' + MEMBERS[r.member].file + '.webp' : null]; };
-  add('Start', [['Hub (centre)', 'hub', 'b'], ['Living room (start)', 'living', 'a']]);
+  add('Start', [['Hub (start)', 'hub', 'b'], ['Terrace and pool', 'terrace', 'v'], ['Exit lobby', 'exit', 'a']]);
   LAYOUT.forEach((c) => add(c.name + ' / ' + c.sign, [...c.left, ...c.right, c.end].map(rmItem)));
 })();
 
 function teleport(id) {
-  let x, z, yaw;
+  let x, z, yaw, lv = 0;
   if (id === 'hub') { x = 0; z = 0.6; yaw = faceDir(0, -1); }
+  else if (id === 'terrace') { x = 5.4; z = -9.6; yaw = faceDir(0, -1); lv = 1; }
+  else if (id === 'exit') { x = -5.35; z = 8.6; yaw = faceDir(0, 1); lv = -1; }
   else { const r = roomInfo[id]; if (!r) return; x = r.entry.x; z = r.entry.z; yaw = faceDir(r.entry.face[0], r.entry.face[1]); }
   const f = $('fade'); f.classList.add('on');
-  setTimeout(() => { player.x = x; player.z = z; player.yaw = yaw; player.pitch = 0; f.classList.remove('on'); }, 230);
+  setTimeout(() => { player.x = x; player.z = z; player.yaw = yaw; player.pitch = 0; player.level = lv; player.gy = lv === 1 ? DECK_Y : lv === -1 ? LOW_Y : 0; f.classList.remove('on'); }, 230);
 }
 
 /* start screen */
 const startEl = $('start');
 $('startBtn').addEventListener('click', () => {
   startEl.classList.add('hide'); started = true; setUi();
-  if (!isTouch) { try { canvas.requestPointerLock(); } catch (e) {} }
-  const h = location.hash.replace('#', ''); if (h && (roomInfo[h] || h === 'hub')) teleport(h);
+  hintDone = false; setTimeout(() => { hintDone = true; updateHint(); }, 7000); updateHint();
+  const h = location.hash.replace('#', ''); if (h && (roomInfo[h] || h === 'hub' || h === 'terrace' || h === 'exit')) teleport(h);
 });
-function updateHint() { hint.classList.toggle('show', started && !isTouch && !locked && !uiOpen); }
+let hintDone = false;
+function updateHint() { hint.classList.toggle('show', started && !isTouch && !uiOpen && !hintDone); }
 
 /* minimap */
 const mini = $('mini'), mctx = mini.getContext('2d');
@@ -646,7 +846,7 @@ let miniBg = null;
 function miniDraw() {
   const css = getComputedStyle(document.documentElement);
   miniBg = document.createElement('canvas'); miniBg.width = miniBg.height = MS * 2; const g = miniBg.getContext('2d');
-  spaces.forEach((s) => {
+  spaces.filter((s) => !s.noMap).forEach((s) => {
     g.fillStyle = s.kind === 'room' ? (TINTS[ROOMS[s.id].tint] + 'cc') : s.kind === 'hub' ? css.getPropertyValue('--primary').trim() : css.getPropertyValue('--primary-soft').trim();
     g.fillRect(mx(s.x0), mz(s.z0), (s.x1 - s.x0) * mScale, (s.z1 - s.z0) * mScale);
   });
@@ -665,6 +865,8 @@ function whereAmI() {
   let found = null;
   for (const s of spaces) {
     if (player.x < s.x0 || player.x > s.x1 || player.z < s.z0 || player.z > s.z1) continue;
+    const sl = s.level === undefined ? 0 : s.level; if (sl !== 'any' && sl !== player.level) continue;
+    if (s.kind === 'area') { found = s; break; }
     if (s.kind === 'room') { found = s; break; }
     if (!found || (s.kind === 'corridor' && found.kind === 'hub')) found = s;
   }
@@ -692,9 +894,10 @@ function frame() {
       player.x = nx; player.z = nz; player.bob += (Math.abs(fw) + Math.abs(st) > 0 ? 1 : 0) * dt * (keys['shift'] ? 11 : 7.5);
     }
   }
-  camera.position.set(player.x, EYE + Math.sin(player.bob) * 0.025, player.z);
+  player.gy = groundY();
+  camera.position.set(player.x, player.gy + EYE + Math.sin(player.bob) * 0.025, player.z);
   camera.rotation.set(player.pitch, player.yaw, 0);
-  glow.position.set(player.x, 2.4, player.z);
+  glow.position.set(player.x, player.gy + 2.4, player.z);
   for (const d of doors) {
     const near = Math.hypot(player.x - d.cx, player.z - d.cz) < 2.3 ? 1 : 0;
     d.k += (near - d.k) * Math.min(1, dt * 6); d.leaf.position.copy(d.base).addScaledVector(d.off, d.k);
@@ -702,8 +905,9 @@ function frame() {
   texT += dt; if (texT > 0.3) { texT = 0; updateTextures(player.x, player.z); whereAmI(); }
   promptT += dt;
   if (promptT > 0.12) {
-    promptT = 0; const id = started && !uiOpen ? pick(0, 0) : null;
-    if (id !== shown) { shown = id; prompt.classList.toggle('show', !!id); if (id) $('promptTxt').textContent = ROOMS[id].title + ': ' + (isTouch ? 'tap to see why this room' : 'press E or click'); }
+    promptT = 0; const id = started && !uiOpen ? hoverPick() : null;
+    canvas.style.cursor = uiOpen ? 'default' : id ? 'pointer' : ptrs.size ? 'grabbing' : 'grab';
+    if (id !== shown) { shown = id; prompt.classList.toggle('show', !!id); if (id) $('promptTxt').textContent = ROOMS[id].title + ': ' + (isTouch ? 'tap to see why this room' : 'click to open'); }
   }
   miniFrame();
   renderer.render(scene, camera);

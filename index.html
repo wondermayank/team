@@ -42,7 +42,7 @@ button{font:inherit;color:inherit;cursor:pointer}
 .crumbs{display:none}
 
 /* crosshair + prompt + hint */
-#cross{position:fixed;left:50%;top:50%;width:8px;height:8px;margin:-4px 0 0 -4px;border-radius:50%;background:#fff;box-shadow:0 0 0 2px rgba(27,35,64,.45);opacity:.85;pointer-events:none;z-index:10}
+#cross{display:none;position:fixed;left:50%;top:50%;width:8px;height:8px;margin:-4px 0 0 -4px;border-radius:50%;background:#fff;box-shadow:0 0 0 2px rgba(27,35,64,.45);opacity:.85;pointer-events:none;z-index:10}
 .touch #cross{display:none}
 #prompt{position:fixed;left:50%;bottom:max(26px,env(safe-area-inset-bottom));transform:translate(-50%,20px);opacity:0;pointer-events:none;border:0;border-radius:999px;padding:13px 22px;font-weight:800;color:var(--on-primary);background:var(--primary);box-shadow:0 10px 26px rgba(63,111,224,.4);display:flex;align-items:center;gap:10px;z-index:15;transition:opacity .25s,transform .25s}
 [data-theme="dark"] #prompt{box-shadow:0 10px 26px rgba(0,0,0,.5)}
@@ -139,7 +139,7 @@ button{font:inherit;color:inherit;cursor:pointer}
 
 <div id="where" class="clay" aria-live="polite"></div>
 <canvas id="mini" class="clay" aria-label="Mini map. Tap to open the room list"></canvas>
-<div id="hint" class="clay">Click the view to look around. Esc to free the mouse.</div>
+<div id="hint" class="clay">Drag to look around. Click a picture to open it.</div>
 
 <button id="prompt" type="button"><svg viewBox="0 0 24 24"><path d="M2 12s3.6-7 10-7 10 7 10 7-3.6 7-10 7S2 12 2 12z"/><circle cx="12" cy="12" r="3"/></svg><span id="promptTxt"></span></button>
 
@@ -170,10 +170,10 @@ button{font:inherit;color:inherit;cursor:pointer}
   <div class="card clay">
     <div class="logo"><svg viewBox="0 0 24 24" style="fill:currentColor"><path d="M13 2 4 14h7l-1 8 9-12h-7z"/></svg></div>
     <h1>Walk through Thunder Office</h1>
-    <p>You start in the living room. Walk down the corridors to meet all 13 of us in our rooms, and tap any picture to see why the room exists.</p>
+    <p>You start in the hub. Walk down the corridors to meet all 13 of us in our rooms, and tap any picture to see why the room exists.</p>
     <div class="keys d">
       <div><b>Move</b>W A S D or arrow keys</div><div><b>Run</b>Hold Shift</div>
-      <div><b>Look</b>Mouse (click the view first)</div><div><b>See details</b>E or click a picture</div>
+      <div><b>Look</b>Drag the mouse</div><div><b>See details</b>Click a picture</div>
     </div>
     <div class="keys m">
       <div><b>Move</b>Drag with your left thumb</div><div><b>Look</b>Drag with your right thumb</div>

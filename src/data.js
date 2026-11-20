@@ -116,24 +116,27 @@ export const LAYOUT = [
     id: 'c1', heading: 'N', name: 'Corridor 1', sign: 'Team rooms', sub: 'All 13 members',
     left: ['anamika', 'aahan', 'pragya', 'aashi', 'sara', 'rohit'],
     right: ['shruti', 'sora', 'mahi', 'nani', 'rohan', 'raj'],
-    end: 'wondermayank', endSize: [5.2, 5.2],
+    end: 'wondermayank', endSize: [6.3, 8.6], pitch: 6.6, sideD: 8.6, start: 4.2,
   },
   {
     id: 'c2', heading: 'S', name: 'Corridor 2', sign: 'Shared rooms', sub: 'Singing, creativity, living room',
     left: ['singing'], right: ['creativity'],
-    end: 'living', endSize: [7.2, 6.4], minLength: 8,
+    end: 'living', endSize: [7.2, 6.4], minLength: 8, start: 4.2,
+    extra: [],
   },
   {
     id: 'c3', heading: 'E', name: 'Corridor 3', sign: 'Work rooms', sub: 'Tech, designer, dancing',
     left: ['tech'], right: ['designer'],
     end: 'dancing', endSize: [6.4, 5.6], minLength: 8, start: 4.6,
+    extra: [{ side: -1, zc: 2.4, title: 'Stairs up', sub: 'Terrace and pool', tint: 'v' }],
   },
   {
     id: 'c4', heading: 'W', name: 'Corridor 4', sign: 'CA room', sub: 'Anamika\'s client room',
     left: [], right: [],
-    end: 'ca', endSize: [5.6, 5.2], minLength: 10,
+    end: 'ca', endSize: [5.6, 5.2], minLength: 10, cross: [6.4],
+    extra: [{ side: -1, zc: 2.4, title: 'Stairs down', sub: 'Exit', tint: 'a' }],
   },
 ];
 
 // Where the visitor starts.
-export const SPAWN = 'living';
+export const SPAWN = 'hub';

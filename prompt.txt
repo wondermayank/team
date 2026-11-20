@@ -26,7 +26,8 @@ Clean minimal design, game-ready, single object, no text, no logos, no people, n
 
 3) ROOM SIZES (inner width x depth, metres)
 -------------------------------------------
-Personal rooms (13) and side rooms (singing, creativity, tech, designer): 4.4 x 5.0
+Personal rooms (13): 6.3 wide x 8.6 deep = bedroom (front 5.7 m) + big bathroom behind a wall (back 2.9 m), doorway at x +2.15 (keep clear). Wondermayank's room is the same size.
+Side rooms (singing, creativity, tech, designer): 4.4 x 5.0
 Living room 7.2 x 6.4  |  Dancing room 6.4 x 5.6  |  CA room 5.6 x 5.2  |  Wondermayank's room 5.2 x 5.2  |  Hub 6 x 6
 (Tip: generate each prop separately and combine them in Blender or at https://gltf.report / Three.js editor, then export one decor file per room.)
 
@@ -95,7 +96,8 @@ WONDERMAYANK'S ROOM (decor_wondermayank.glb)
  - "whiteboard with sticky notes"
 
 PERSONAL ROOMS (13) - generate once as a base set, then add ONE signature prop per person
- Base set (decor_<name>.glb): "single bed with pastel blanket and pillows", "study desk with a lamp and books", "desk chair", "bedside table with a small plant", "round fluffy rug"
+ Bedroom (front half, z +4.3 to -1.3): "queen bed with pastel blanket and pillows (head on the left wall)", "study table with laptop, lamp and books (right wall)", "desk chair", "bookshelf", "bedside table with lamp", "round fluffy rug"
+ Bathroom (back, z -1.3 to -4.3): "freestanding bathtub", "glass shower stall", "vanity with a big mirror", "toilet", "changing room booth with a curtain", "tall dress storage wardrobe", "laundry basket", "bath mat". Same set for boys and girls (girls: pink/lavender accents, boys: blue/teal).
  Signature props:
   anamika : jewellery box and a mini mirror
   aahan   : keyboard with a code monitor and a stack of ACCA books
@@ -129,3 +131,10 @@ HUB (hub_decor.glb, 6 x 6 m)
  1. Put decor_tech.glb in /models, write { "decor": ["tech"] } in models/manifest.json.
  2. Run:  python3 -m http.server 8080   then open http://localhost:8080/
  3. Press "Enter the office", open the map (M), teleport to the Tech room.
+
+
+7) EXTRA AREAS (hub_decor.glb is the hub only; these are separate files)
+------------------------------------------------------------------------
+ models/terrace_decor.glb  origin: world (9, DECK 3.45, -15.2) = pool centre. Pool 6 x 3.4 m is already drawn; add: sun loungers, umbrellas, potted palms, pool towels, outdoor sofa.
+ models/exit_decor.glb     origin: world (-5.35, -3.45, 9.6) = exit lobby centre. Add: reception desk, benches, plants, shoe rack, notice board.
+ (Register as "terrace": true and "exit": true in manifest.json - not loaded yet, tell me and I will wire them in.)
