@@ -84,6 +84,33 @@ button{font:inherit;color:inherit;cursor:pointer}
 .spin{width:44px;height:44px;border-radius:50%;border:5px solid var(--primary-soft);border-top-color:var(--primary);animation:sp 0.9s linear infinite}
 @keyframes sp{to{transform:rotate(360deg)}}
 
+/* loading bar */
+.lwrap{width:min(320px,80vw);text-align:center}
+.lbarbox{height:12px;border-radius:999px;background:var(--primary-soft);overflow:hidden;box-shadow:inset 2px 2px 5px var(--clay-dark)}
+#lbar{height:100%;width:0;border-radius:999px;background:linear-gradient(90deg,#60A5FA,#7C3AED);transition:width .3s}
+#ltxt{margin-top:12px;font-weight:700;color:var(--ink);font-size:14px}
+.lwrap .spin{margin:0 auto 18px}
+/* lift + tour */
+#lift{position:fixed;left:50%;bottom:max(24px,env(safe-area-inset-bottom));transform:translate(-50%,24px);opacity:0;pointer-events:none;border-radius:26px;padding:12px 16px;z-index:16;text-align:center;transition:opacity .25s,transform .25s}
+#lift.show{opacity:1;transform:translate(-50%,0);pointer-events:auto}
+#lift b{display:block;color:var(--ink);font-size:13px;margin-bottom:8px}#lift b span{color:var(--primary)}
+#liftBtns{display:flex;gap:8px}
+#liftBtns button{min-width:44px;height:44px;padding:0 10px;border:0;border-radius:50%;font-weight:800;background:var(--canvas);color:var(--ink);box-shadow:3px 3px 8px var(--clay-dark),-3px -3px 8px var(--clay-light)}
+#liftBtns button:last-child{border-radius:999px}
+#liftBtns button.cur{background:var(--primary);color:var(--on-primary)}
+#tourBar{position:fixed;left:50%;bottom:max(24px,env(safe-area-inset-bottom));transform:translate(-50%,24px);opacity:0;pointer-events:none;display:flex;align-items:center;gap:10px;padding:10px 12px 10px 20px;border-radius:999px;z-index:17;transition:opacity .25s,transform .25s;max-width:calc(100vw - 20px)}
+#tourBar.show{opacity:1;transform:translate(-50%,0);pointer-events:auto}
+#tourCap{font-weight:800;color:var(--ink);font-size:14px;max-width:34vw;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+#tourCount{font-size:12px;color:var(--body)}
+#tourBar button{border:0;border-radius:999px;padding:9px 15px;font-weight:800;font-size:13px;background:var(--canvas);color:var(--ink)}
+#tourBar #tourStop{background:var(--primary);color:var(--on-primary)}
+#tourBtn.on{background:var(--primary);color:var(--on-primary)}
+@media(max-width:560px){#tourCap{max-width:26vw;font-size:12.5px}#tourCount{display:none}#tourBar{padding-left:14px;gap:6px}#tourBar button{padding:9px 11px}}
+/* member card */
+#pCard{display:flex;gap:14px;align-items:center;margin-top:14px;padding:12px;border-radius:22px;background:var(--canvas)}
+#pCard img{width:64px;height:64px;border-radius:20px;object-fit:cover;flex:none}
+#cName{display:block;color:var(--ink);font-size:16px}#cNick{display:block;font-size:13px;color:var(--primary);font-weight:700;margin:1px 0 6px}
+#cSkills{display:flex;flex-wrap:wrap;gap:6px}#cSkills span{padding:4px 11px;border-radius:999px;background:var(--primary-soft);color:var(--ink);font-size:12px;font-weight:700}
 /* popup */
 #popup{position:fixed;inset:0;z-index:50;display:grid;place-items:center;padding:16px;background:var(--scrim);backdrop-filter:blur(5px);-webkit-backdrop-filter:blur(5px);opacity:0;visibility:hidden;transition:opacity .35s,visibility .35s}
 #popup.show{opacity:1;visibility:visible}
@@ -128,6 +155,7 @@ button{font:inherit;color:inherit;cursor:pointer}
     <span>Thunder Office<small>ThunderStudy team</small></span>
   </a>
   <div class="tools">
+    <button class="ib clay" id="tourBtn" aria-label="Guided tour"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="m15.5 8.5-2 5-5 2 2-5z"/></svg></button>
     <button class="ib clay" id="mapBtn" aria-label="Rooms and map"><svg viewBox="0 0 24 24"><path d="M9 4 3 6v14l6-2 6 2 6-2V4l-6 2z"/><path d="M9 4v14M15 6v14"/></svg></button>
     <button class="ib clay" id="themeBtn" aria-label="Switch light and dark theme">
       <svg class="sun" viewBox="0 0 24 24"><circle cx="12" cy="12" r="4.2"/><path d="M12 2.5v2.4M12 19.1v2.4M4.2 4.2l1.7 1.7M18.1 18.1l1.7 1.7M2.5 12h2.4M19.1 12h2.4M4.2 19.8l1.7-1.7M18.1 5.9l1.7-1.7"/></svg>
@@ -139,10 +167,12 @@ button{font:inherit;color:inherit;cursor:pointer}
 
 <div id="where" class="clay" aria-live="polite"></div>
 <canvas id="mini" class="clay" aria-label="Mini map. Tap to open the room list"></canvas>
-<div id="hint" class="clay">Drag to look around. Click a picture to open it.</div>
+<div id="hint" class="clay">Drag to look around. Click a picture to open it. Walk into the lift to change floor.</div>
 
 <button id="prompt" type="button"><svg viewBox="0 0 24 24"><path d="M2 12s3.6-7 10-7 10 7 10 7-3.6 7-10 7S2 12 2 12z"/><circle cx="12" cy="12" r="3"/></svg><span id="promptTxt"></span></button>
 
+<div id="lift" class="clay"><b>Lift <span id="liftName"></span></b><div id="liftBtns"></div></div>
+<div id="tourBar" class="clay"><div><div id="tourCap"></div><div id="tourCount"></div></div><button id="tourPause" type="button">Pause</button><button id="tourNext" type="button">Next</button><button id="tourStop" type="button">Stop</button></div>
 <div id="joyZone"></div>
 <div id="joyBase"><div id="joyKnob"></div></div>
 <div id="joyHelp"><svg viewBox="0 0 24 24"><path d="M12 3v18M3 12h18M12 3l-3 3M12 3l3 3M12 21l-3-3M12 21l3-3M3 12l3-3M3 12l3 3M21 12l-3-3M21 12l-3 3"/></svg></div>
@@ -155,8 +185,9 @@ button{font:inherit;color:inherit;cursor:pointer}
     <div class="pbody">
       <span id="pTag"></span>
       <h2 id="pTitle"></h2>
-      <span class="lab">Why this room</span><p id="pWhy"></p>
-      <span class="lab">Who uses it</span><div id="pWho"></div>
+      <span class="lab">About this</span><p id="pWhy"></p>
+      <div id="pCard"><img id="cImg" alt=""><div><b id="cName"></b><span id="cNick"></span><div id="cSkills"></div></div></div>
+      <div id="pWhoBox"><span class="lab">Who uses it</span><div id="pWho"></div></div>
     </div>
   </div>
 </div>
@@ -170,20 +201,20 @@ button{font:inherit;color:inherit;cursor:pointer}
   <div class="card clay">
     <div class="logo"><svg viewBox="0 0 24 24" style="fill:currentColor"><path d="M13 2 4 14h7l-1 8 9-12h-7z"/></svg></div>
     <h1>Walk through Thunder Office</h1>
-    <p>You start in the hub. Walk down the corridors to meet all 13 of us in our rooms, and tap any picture to see why the room exists.</p>
+    <p>You start outside, in the garden. Walk to the main door, then explore five floors and the terrace pool by stairs or lift. Tap any picture to see why a room exists, or press the compass for a guided tour.</p>
     <div class="keys d">
       <div><b>Move</b>W A S D or arrow keys</div><div><b>Run</b>Hold Shift</div>
       <div><b>Look</b>Drag the mouse</div><div><b>See details</b>Click a picture</div>
     </div>
     <div class="keys m">
       <div><b>Move</b>Drag with your left thumb</div><div><b>Look</b>Drag with your right thumb</div>
-      <div><b>See details</b>Tap a picture</div><div><b>Jump</b>Use the map button</div>
+      <div><b>See details</b>Tap a picture</div><div><b>Walk there</b>Tap the floor</div>
     </div>
-    <button class="go" id="startBtn" type="button">Enter the office<svg viewBox="0 0 24 24"><path d="M5 12h14M13 6l6 6-6 6"/></svg></button>
+    <button class="go" id="startBtn" type="button"><span>Enter the office</span><svg viewBox="0 0 24 24"><path d="M5 12h14M13 6l6 6-6 6"/></svg></button>
     <p class="note">Rooms and portraits are illustrations to protect everyone's privacy.</p>
   </div>
 </div>
-<div id="loading"><div class="spin"></div></div>
+<div id="loading"><div class="lwrap"><div class="spin"></div><div class="lbarbox"><div id="lbar"></div></div><div id="ltxt">Loading the office</div></div></div>
 <noscript><p style="position:fixed;inset:0;z-index:99;display:grid;place-items:center;background:#fff;color:#111;margin:0;padding:20px;text-align:center">Please turn on JavaScript to walk through the office, or visit the <a href="/team.html">team page</a>.</p></noscript>
 <script src="app.js"></script>
 </body>

@@ -138,3 +138,13 @@ HUB (hub_decor.glb, 6 x 6 m)
  models/terrace_decor.glb  origin: world (9, DECK 3.45, -15.2) = pool centre. Pool 6 x 3.4 m is already drawn; add: sun loungers, umbrellas, potted palms, pool towels, outdoor sofa.
  models/exit_decor.glb     origin: world (-5.35, -3.45, 9.6) = exit lobby centre. Add: reception desk, benches, plants, shoe rack, notice board.
  (Register as "terrace": true and "exit": true in manifest.json - not loaded yet, tell me and I will wire them in.)
+
+
+=== v3 ADDITIONS (5-floor building) ===
+Style for everything: soft clay 3D, rounded edges, cream/white with purple (#7C3AED, #A78BFA, #C4B5FD) and blue (#60A5FA, #B9D9DC) accents, single glb under 3 MB, Y-up, origin at floor centre, meters.
+Floor structure: floor height 3.6 m (3.2 m clear). Corridor floor 2: 10 m wide. Floor 3 team rooms: 6.6 m pitch x 9.6 m deep, corridor 4 m wide, end room 9x10 m. Floor 4 rooms 9.4 m pitch x 8.6 m deep, end room 14x10 m.
+Extra decor ideas to generate:
+- exterior: cream palace facade with jali tower and dome, balcony planter, garden gazebo, swing pergola, fountain pool, palm, garden lamp, iron gate
+- lobby: waiting sofa set, reception desk, rules poster stand, knock sign plaque
+- terrace: pool lounger, pergola swing, string-light pole, patio umbrella, bean bag
+- bathroom: clay bathtub, glass shower, vanity mirror, dress rack
